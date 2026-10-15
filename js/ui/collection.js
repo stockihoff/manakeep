@@ -178,7 +178,7 @@ function Welcome({ onImport }) {
     </div>
     <div class="stack">
       <${Alert} kind="info"><b>Where to find the export</b><br />ManaBox: open your collection and use Export (CSV) in the top-right menu.<br />Moxfield: open your Collection page and choose Export.</${Alert}>
-      <${Alert} kind="info">Everything stays in this browser. Card data comes from Scryfall. Use Settings → Backup to move your data between devices.</${Alert}>
+      <${Alert} kind="info">Tip: in <a href="#/settings">Settings</a>, choose a save folder (e.g. in OneDrive) and Manakeep saves your collection and decks there automatically, just like Quillkeep.</${Alert}>
     </div>
   </div>`;
 }

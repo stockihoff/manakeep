@@ -2,6 +2,7 @@ import { html, useState, useEffect, useRef } from '../vendor/preact-htm.js';
 import { useStore, updateSettings, exportBackup, importBackup, refreshCardData, wipeEverything, toast } from '../store.js';
 import { Icon, Alert, downloadFile, plural } from './common.js';
 import { ClearCollectionButton } from './collection.js';
+import { FolderSettings } from './folder.js';
 import { listModels, defaultModel } from '../engine/ai.js';
 
 export function SettingsView() {
@@ -85,9 +86,10 @@ export function SettingsView() {
       </div>
 
       <div class="stack">
+        <${FolderSettings} />
         <div class="card stack">
-          <h3>Backup & devices</h3>
-          <p class="small muted">Your collection and decks live in this browser only. Download a backup to keep it safe or to move to another device (e.g. your phone), then restore it there. The API key is never included.</p>
+          <h3>Backup</h3>
+          <p class="small muted">A single file with your collection, decks and card data — handy for moving to a device without your save folder. The API key is never included.</p>
           <div class="row tight">
             <button onClick=${doBackup}><${Icon} name="download" /> Download backup</button>
             <button onClick=${() => fileRef.current.click()}><${Icon} name="upload" /> Restore backup</button>
@@ -106,11 +108,11 @@ export function SettingsView() {
           <h3>Danger zone</h3>
           <div class="row tight"><${ClearCollectionButton} /></div>
           ${confirmWipe
-            ? html`<div class="row tight"><span class="small">Delete your collection, decks and cached cards?</span><button class="danger sm" onClick=${async () => { await wipeEverything(); setConfirmWipe(false); toast('Everything deleted'); }}>Delete everything</button><button class="sm ghost" onClick=${() => setConfirmWipe(false)}>Cancel</button></div>`
+            ? html`<div class="row tight"><span class="small">Delete your collection, decks and cached cards from this browser? (Your save folder isn't touched.)</span><button class="danger sm" onClick=${async () => { await wipeEverything(); setConfirmWipe(false); toast('Deleted from this browser. Your save folder was not touched.'); }}>Delete everything</button><button class="sm ghost" onClick=${() => setConfirmWipe(false)}>Cancel</button></div>`
             : html`<div><button class="danger" onClick=${() => setConfirmWipe(true)}><${Icon} name="trash" /> Delete all data</button></div>`}
         </div>
 
-        <p class="small faint">Manakeep isn't affiliated with Wizards of the Coast, Scryfall, Moxfield or ManaBox. Card data and images © Scryfall / Wizards of the Coast.</p>
+        <p class="small faint">Manakeep ${document.querySelector('meta[name="manakeep-version"]')?.content || 'dev'} · Manakeep isn't affiliated with Wizards of the Coast, Scryfall, Moxfield or ManaBox. Card data and images © Scryfall / Wizards of the Coast.</p>
       </div>
     </div>
   </div>`;

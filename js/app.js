@@ -8,6 +8,7 @@ import { BuildView } from './ui/build.js';
 import { CommandersView } from './ui/commanders.js';
 import { SettingsView } from './ui/settings.js';
 import { CardModal } from './ui/cardmodal.js';
+import { FolderStatus, FolderPrompts } from './ui/folder.js';
 
 function parseHash() {
   const raw = window.location.hash.replace(/^#\/?/, '');
@@ -63,8 +64,9 @@ function App() {
       <a class="logo" href="#/decks"><${Logo} />Manakeep</a>
       <nav class="nav">${NAV.map(([k, label, icon]) => html`<a href=${`#/${k}`} class=${active === k ? 'active' : ''}><${Icon} name=${icon} />${label}</a>`)}</nav>
       <span class="spacer"></span>
+      ${s.ready && html`<${FolderStatus} />`}
     </div></header>
-    <main>${view}</main>
+    <main>${s.ready && html`<${FolderPrompts} />`}${view}</main>
     <${CardModal} />
     <div class="toasts" aria-live="polite">${s.toasts.map((t) => html`<div class=${`toast ${t.kind}`}><span class="grow">${t.msg}</span><button class="ghost icon sm" aria-label="Dismiss" onClick=${() => dismissToast(t.id)}><${Icon} name="x" /></button></div>`)}</div>
   `;

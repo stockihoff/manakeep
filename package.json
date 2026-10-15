@@ -1,1 +1,11 @@
-{"type":"module","name":"manakeep","private":true,"scripts":{"test":"node --test tests/"}}
+{
+  "type": "module",
+  "name": "manakeep",
+  "private": true,
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "e2e": "node tests/e2e.mjs",
+    "build": "node build.mjs"
+  },
+  "version": "1.0"
+}

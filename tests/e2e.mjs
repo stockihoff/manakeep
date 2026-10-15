@@ -25,7 +25,8 @@ const server = http.createServer((req, res) => {
   fs.createReadStream(f).pipe(res);
 });
 await new Promise((r) => server.listen(0, r));
-const base = `http://localhost:${server.address().port}/`;
+// FILE=1 tests the single-file desktop build opened straight from disk (like the launcher does).
+const base = process.env.FILE ? `file://${path.join(root, 'dist', 'Manakeep.html')}` : `http://localhost:${server.address().port}/`;
 
 // ---------- fixtures ----------
 const ALL = [...REAL_CARDS, ...syntheticCards(80)];
@@ -57,6 +58,10 @@ const krenkoDeck = `1 Sol Ring (TST) 1
 // ---------- run ----------
 const browser = await pw.chromium.launch({ executablePath: fs.existsSync('/opt/pw-browsers/chromium') ? undefined : undefined });
 const ctx = await browser.newContext({ viewport: { width: 1360, height: 900 } });
+// Headless Chromium can't show a folder picker, so hand back a folder in the origin-private file system.
+await ctx.addInitScript(() => {
+  window.showDirectoryPicker = async () => (await navigator.storage.getDirectory()).getDirectoryHandle('My Manakeep', { create: true });
+});
 const page = await ctx.newPage();
 const errors = [];
 page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
@@ -106,6 +111,7 @@ await page.route('**/*', async (route) => {
 });
 
 const step = async (name, fn) => {
+  if (process.env.FILE && /folder/.test(name)) { console.log(`- ${name} (skipped from file://; run without FILE=1)`); return; }
   try { await fn(); console.log(`✓ ${name}`); }
   catch (e) { console.log(`✗ ${name}\n  ${e.message.split('\n')[0]}`); await page.screenshot({ path: path.join(shots, `fail-${name.replace(/\W+/g, '-')}.png`), fullPage: true }); throw e; }
 };
@@ -242,15 +248,56 @@ try {
     await expectText('Mana curve');
   });
 
+  await step('save to a folder', async () => {
+    await page.goto(base + '#/settings');
+    await page.getByRole('button', { name: 'Choose save folder' }).click();
+    await expectText('Saved to My Manakeep');
+    await page.screenshot({ path: path.join(shots, '12b-save-folder.png'), fullPage: true });
+    const files = await page.evaluate(async () => {
+      const root = await (await navigator.storage.getDirectory()).getDirectoryHandle('My Manakeep');
+      const decks = await root.getDirectoryHandle('Decks');
+      const names = []; for await (const [n] of decks.entries()) names.push(n);
+      const st = JSON.parse(await (await (await (await root.getDirectoryHandle('.manakeep')).getFileHandle('state.json')).getFile()).text());
+      const csv = await (await (await root.getFileHandle('Collection.csv')).getFile()).text();
+      return { names, decks: st.decks.length, hasKey: 'apiKey' in (st.settings || {}), csvRows: csv.split('\n').length };
+    });
+    if (files.decks < 3 || files.names.length !== files.decks || files.hasKey || files.csvRows < 100) throw new Error('folder contents wrong: ' + JSON.stringify(files));
+    // an edit autosaves
+    await page.goto(base + '#/decks');
+    await page.locator('.deck-tile', { hasText: 'Krenko Goblins' }).click();
+    await page.locator('.inline-edit').fill('Krenko Party');
+    await page.locator('.inline-edit').press('Tab');
+    await page.waitForTimeout(1800);
+    const renamed = await page.evaluate(async () => {
+      const decks = await (await (await navigator.storage.getDirectory()).getDirectoryHandle('My Manakeep')).getDirectoryHandle('Decks');
+      const names = []; for await (const [n] of decks.entries()) names.push(n); return names;
+    });
+    if (!renamed.includes('Krenko Party.txt') || renamed.includes('Krenko Goblins.txt')) throw new Error('rename not saved: ' + renamed.join(', '));
+  });
+
   await step('decks list + conflicts', async () => {
     await page.goto(base + '#/decks');
-    await expectText('Krenko Goblins');
+    await expectText(process.env.FILE ? 'Krenko Goblins' : 'Krenko Party');
     await page.screenshot({ path: path.join(shots, '15-decks.png'), fullPage: true });
   });
 
   await step('data persists after reload', async () => {
     await page.reload();
-    await expectText('Krenko Goblins');
+    await expectText(process.env.FILE ? 'Krenko Goblins' : 'Krenko Party');
+    if (!process.env.FILE) await expectText('Saved to My Manakeep');
+  });
+
+  await step('a fresh browser loads everything back from the folder', async () => {
+    await page.goto(base + '#/settings');
+    await page.getByRole('button', { name: 'Delete all data' }).click();
+    await page.getByRole('button', { name: 'Delete everything' }).click();
+    await expectText('Not saving to a folder');
+    await page.goto(base + '#/settings');
+    await page.getByRole('button', { name: 'Choose save folder' }).click();
+    await expectText('Loaded your collection');
+    await page.goto(base + '#/decks');
+    await expectText('Krenko Party');
+    await expectText('Drake Storm');
   });
 
   await step('mobile layout', async () => {

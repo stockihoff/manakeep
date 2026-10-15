@@ -1,0 +1,23 @@
+#!/bin/bash
+# Manakeep for macOS: opens the app in its own window (Chrome, Edge, Brave or Chromium).
+# The page is bundled inside this app and copied to a fixed place, so replacing the app
+# updates Manakeep while your collection, decks and browser storage stay exactly as they were.
+APP="$(cd "$(dirname "$0")/../.." && pwd)"
+SRC="$APP/Contents/Resources/Manakeep.html"
+LIVE_DIR="$HOME/Library/Application Support/Manakeep/app"
+LIVE="$LIVE_DIR/Manakeep.html"
+mkdir -p "$LIVE_DIR"
+if [ -f "$SRC" ] && ! cmp -s "$SRC" "$LIVE"; then cp "$SRC" "$LIVE"; fi
+if [ ! -f "$LIVE" ]; then
+  osascript -e 'display alert "Manakeep" message "This copy of Manakeep looks incomplete. Please install it again."'
+  exit 1
+fi
+URL="file://$(printf '%s' "$LIVE" | sed -e 's/%/%25/g' -e 's/ /%20/g' -e 's/#/%23/g')"
+for B in "Google Chrome" "Microsoft Edge" "Brave Browser" "Chromium" "Vivaldi"; do
+  if [ -d "/Applications/$B.app" ] || [ -d "$HOME/Applications/$B.app" ]; then
+    open -na "$B" --args --app="$URL" --window-size=1440,920
+    exit 0
+  fi
+done
+osascript -e 'display alert "Manakeep works best in Google Chrome or Microsoft Edge" message "Safari can open it, but it cannot save straight to a folder. Opening in your default browser for now."'
+open "$LIVE"
